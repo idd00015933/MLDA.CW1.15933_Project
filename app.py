@@ -89,8 +89,8 @@ st.write("Provide your 10 category ratings and discover your cluster group!")
 st.markdown("<h3>Enter Your Ratings (0 - 4)</h3>", unsafe_allow_html=True)
 
 categories = [
-    "Category 1", "Category 2", "Category 3", "Category 4", "Category 5",
-    "Category 6", "Category 7", "Category 8", "Category 9", "Category 10"
+    "1. Average user feedback on art galleries", "2. Average user feedback on dance clubs", "3. Average user feedback on juice bars", "4. Average user feedback on restaurants", "5. Average user feedback on museums",
+    "6. Average user feedback on resorts", "7. Average user feedback on parks/picnic spots", "8. Average user feedback on beaches", "9. Average user feedback on theaters", "10. Average user feedback on religious institutions"
 ]
 
 inputs = []
