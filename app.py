@@ -8,7 +8,7 @@ import pickle
 try:
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
-    with open("kmeans_model.pkl", "rb") as f:
+    with open("dbscan_model.pkl", "rb") as f:
         kmeans = pickle.load(f)
     model_loaded = True
 except Exception as e:
