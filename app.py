@@ -1,52 +1,49 @@
 import streamlit as st
 import numpy as np
 import pickle
+import os
 
-# ============================
-# Load models
-# ============================
-with open("scaler.pkl", "rb") as f:
-    scaler = pickle.load(f)
+# ===============================================
+# Safe model loader
+# ===============================================
+def load_file(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    return None
 
-with open("kmeans.pkl", "rb") as f:
-    kmeans = pickle.load(f)
+scaler = load_file("scaler.pkl")
+kmeans = load_file("kmeans_model.pkl")
 
-# ============================
-# Page Configuration
-# ============================
-st.set_page_config(page_title="Travel Review Cluster App", layout="centered")
+# ===============================================
+# Page UI Setup
+# ===============================================
+st.set_page_config(page_title="Travel Review Clustering", layout="centered")
 
-# ============================
-# Custom CSS (Dark Purple Theme)
-# ============================
 dark_purple = "#2b0a3d"
 light_purple = "#b084f5"
 white = "#ffffff"
 
+# Custom CSS
 st.markdown(
     f"""
     <style>
-
-    /* Background */
     .stApp {{
         background-color: {dark_purple};
         color: {white};
-        font-family: 'Arial';
     }}
 
-    /* Input labels */
     label {{
         color: {white} !important;
         font-weight: bold;
     }}
 
-    /* Prediction button */
     .stButton > button {{
         background-color: {light_purple};
         color: {white};
         border-radius: 10px;
-        padding: 12px 22px;
-        font-size: 18px;
+        padding: 10px 20px;
+        font-size: 17px;
         border: none;
         transition: 0.3s;
     }}
@@ -57,73 +54,88 @@ st.markdown(
         transform: scale(1.05);
     }}
 
-    /* Card style */
     .result-card {{
         background-color: #3a0d55;
         padding: 20px;
         border-radius: 15px;
-        box-shadow: 0px 0px 12px rgba(255, 255, 255, 0.15);
         margin-top: 20px;
+        box-shadow: 0px 0px 12px rgba(255,255,255,0.2);
     }}
 
     h1, h2, h3 {{
         color: {light_purple};
         text-align: center;
-        font-weight: 700;
     }}
-
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# ============================
+# ===============================================
 # App Title
-# ============================
-st.markdown("<h1>🌍 Travel Review Cluster Predictor</h1>", unsafe_allow_html=True)
-st.write("Provide your 10 category ratings and discover your cluster group!")
+# ===============================================
+st.markdown("<h1>🌍 Travel Review Cluster Prediction</h1>", unsafe_allow_html=True)
 
-# ============================
-# Input Form
-# ============================
-st.markdown("<h3>Enter Your Ratings (0 - 4)</h3>", unsafe_allow_html=True)
+# ===============================================
+# Check if models exist
+# ===============================================
+if scaler is None or kmeans is None:
+    st.error("❌ scaler.pkl or kmeans_model.pkl not found.\n\n"
+             "Please upload or include the trained model files.")
+    st.stop()
+
+# ===============================================
+# Rating Mapping
+# ===============================================
+rating_map = {
+    "Excellent (4)": 4.0,
+    "Very Good (3)": 3.0,
+    "Average (2)": 2.0,
+    "Poor (1)": 1.0,
+    "Terrible (0)": 0.0
+}
 
 categories = [
     "1. Average user feedback on art galleries", "2. Average user feedback on dance clubs", "3. Average user feedback on juice bars", "4. Average user feedback on restaurants", "5. Average user feedback on museums",
     "6. Average user feedback on resorts", "7. Average user feedback on parks/picnic spots", "8. Average user feedback on beaches", "9. Average user feedback on theaters", "10. Average user feedback on religious institutions"
 ]
 
-inputs = []
+# ===============================================
+# Collect User Input
+# ===============================================
+with st.form("rating_form"):
+    st.markdown("<h3>Select Ratings</h3>", unsafe_allow_html=True)
 
-with st.form("user_input_form"):
+    inputs = []
     for cat in categories:
-        value = st.number_input(
-            f"{cat} Rating", min_value=0.0, max_value=4.0, step=0.1, format="%.1f"
-        )
-        inputs.append(value)
+        choice = st.selectbox(cat, list(rating_map.keys()))
+        inputs.append(rating_map[choice])
 
-    submit = st.form_submit_button("Predict Cluster")
+    submitted = st.form_submit_button("Predict Cluster")
 
-# ============================
+# ===============================================
 # Prediction Logic
-# ============================
-if submit:
+# ===============================================
+if submitted:
     user_data = np.array(inputs).reshape(1, -1)
+
+    # Scale input properly
     user_scaled = scaler.transform(user_data)
 
-    cluster = kmeans.predict(user_scaled)[0]
+    # Predict cluster
+    cluster = int(kmeans.predict(user_scaled)[0])
+
     distances = kmeans.transform(user_scaled)[0]
 
-    # Display result inside a fancy card
+    # Output card
     st.markdown(
         f"""
         <div class="result-card">
-            <h2>🔮 Prediction Result</h2>
-            <h3>Assigned Cluster: <span style="color:{light_purple};">{cluster}</span></h3>
+            <h2>🔮 Predicted Cluster: {cluster}</h2>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.markdown("### 📏 Distance to Each Centroid")
+    st.write("### 📏 Distance to each centroid")
     st.json({f"Cluster {i}": float(distances[i]) for i in range(len(distances))})
