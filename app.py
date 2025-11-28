@@ -3,28 +3,32 @@ import numpy as np
 import pickle
 import os
 
-# ===============================================
-# Safe model loader
-# ===============================================
-def load_file(path):
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    return None
+# ============================
+# SAFE MODEL LOADING
+# ============================
 
-scaler = load_file("scaler.pkl")
-kmeans = load_file("kmeans_model.pkl")
+def safe_load(path):
+    if not os.path.exists(path):
+        st.error(f"❌ Required file missing: {path}")
+        st.stop()
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
-# ===============================================
-# Page UI Setup
-# ===============================================
-st.set_page_config(page_title="Travel Review Clustering", layout="centered")
+scaler = safe_load("scaler.pkl")
+kmeans = safe_load("kmeans_model.pkl")
+
+# ============================
+# Streamlit Page Settings
+# ============================
+st.set_page_config(page_title="Travel Review Cluster App", layout="centered")
 
 dark_purple = "#2b0a3d"
 light_purple = "#b084f5"
 white = "#ffffff"
 
-# Custom CSS
+# ============================
+# CSS
+# ============================
 st.markdown(
     f"""
     <style>
@@ -32,36 +36,31 @@ st.markdown(
         background-color: {dark_purple};
         color: {white};
     }}
-
     label {{
         color: {white} !important;
         font-weight: bold;
     }}
-
     .stButton > button {{
         background-color: {light_purple};
         color: {white};
         border-radius: 10px;
-        padding: 10px 20px;
-        font-size: 17px;
+        padding: 12px 22px;
+        font-size: 18px;
         border: none;
         transition: 0.3s;
     }}
-
     .stButton > button:hover {{
         background-color: #d2b7ff;
         color: black;
         transform: scale(1.05);
     }}
-
     .result-card {{
         background-color: #3a0d55;
         padding: 20px;
         border-radius: 15px;
+        box-shadow: 0px 0px 12px rgba(255,255,255,0.15);
         margin-top: 20px;
-        box-shadow: 0px 0px 12px rgba(255,255,255,0.2);
     }}
-
     h1, h2, h3 {{
         color: {light_purple};
         text-align: center;
@@ -71,71 +70,76 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ===============================================
-# App Title
-# ===============================================
-st.markdown("<h1>🌍 Travel Review Cluster Prediction</h1>", unsafe_allow_html=True)
+# ============================
+# TITLE
+# ============================
+st.markdown("<h1>🌍 Travel Review Cluster Predictor</h1>", unsafe_allow_html=True)
 
-# ===============================================
-# Check if models exist
-# ===============================================
-if scaler is None or kmeans is None:
-    st.error("❌ scaler.pkl or kmeans_model.pkl not found.\n\n"
-             "Please upload or include the trained model files.")
-    st.stop()
-
-# ===============================================
-# Rating Mapping
-# ===============================================
+# ============================
+# RATING OPTIONS
+# ============================
 rating_map = {
-    "Excellent (4)": 4.0,
-    "Very Good (3)": 3.0,
-    "Average (2)": 2.0,
-    "Poor (1)": 1.0,
-    "Terrible (0)": 0.0
+    "Terrible (0)": 0,
+    "Poor (1)": 1,
+    "Average (2)": 2,
+    "Very Good (3)": 3,
+    "Excellent (4)": 4
 }
 
 categories = [
-    "1. Average user feedback on art galleries", "2. Average user feedback on dance clubs", "3. Average user feedback on juice bars", "4. Average user feedback on restaurants", "5. Average user feedback on museums",
-    "6. Average user feedback on resorts", "7. Average user feedback on parks/picnic spots", "8. Average user feedback on beaches", "9. Average user feedback on theaters", "10. Average user feedback on religious institutions"
+    "Category 1", "Category 2", "Category 3", "Category 4", "Category 5",
+    "Category 6", "Category 7", "Category 8", "Category 9", "Category 10"
 ]
 
-# ===============================================
-# Collect User Input
-# ===============================================
-with st.form("rating_form"):
-    st.markdown("<h3>Select Ratings</h3>", unsafe_allow_html=True)
+# ============================
+# INPUT FORM
+# ============================
+st.markdown("<h3>Rate each category</h3>", unsafe_allow_html=True)
 
-    inputs = []
-    for cat in categories:
-        choice = st.selectbox(cat, list(rating_map.keys()))
+inputs = []
+
+with st.form("rating_form"):
+    for c in categories:
+        choice = st.selectbox(
+            c,
+            options=list(rating_map.keys()),
+            key=c
+        )
         inputs.append(rating_map[choice])
 
-    submitted = st.form_submit_button("Predict Cluster")
+    submit = st.form_submit_button("Predict Cluster")
 
-# ===============================================
-# Prediction Logic
-# ===============================================
-if submitted:
+
+# ============================
+# FINAL SAFE PREDICTION
+# ============================
+if submit:
     user_data = np.array(inputs).reshape(1, -1)
 
-    # Scale input properly
-    user_scaled = scaler.transform(user_data)
+    # --- FIXED SCALING ---
+    # scaler might be sklearn or a numpy array → both supported
+    if hasattr(scaler, "transform"):
+        user_scaled = scaler.transform(user_data)
+    else:
+        # assume numpy mean/std arrays
+        user_scaled = (user_data - scaler[0]) / scaler[1]
 
-    # Predict cluster
+    # Predict
     cluster = int(kmeans.predict(user_scaled)[0])
-
     distances = kmeans.transform(user_scaled)[0]
 
-    # Output card
+    # Display result
     st.markdown(
         f"""
         <div class="result-card">
-            <h2>🔮 Predicted Cluster: {cluster}</h2>
+            <h2>🔮 Prediction Result</h2>
+            <h3>Assigned Cluster: 
+                <span style="color:{light_purple};">{cluster}</span>
+            </h3>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.write("### 📏 Distance to each centroid")
+    st.markdown("### 📏 Distance to Each Cluster Center")
     st.json({f"Cluster {i}": float(distances[i]) for i in range(len(distances))})
