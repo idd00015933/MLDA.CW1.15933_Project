@@ -8,8 +8,8 @@ import pickle
 try:
     with open("scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
-    with open("dbscan_model.pkl", "rb") as f:
-        dbscan_model = pickle.load(f)
+    with open("kmeans_model.pkl", "rb") as f:
+        kmeans = pickle.load(f)
     model_loaded = True
 except Exception as e:
     model_loaded = False
@@ -131,12 +131,12 @@ if submit:
     user_scaled = scaler.transform(user_data)
 
     # Predict cluster
-    cluster = int(dbscan_model.predict(user_scaled)[0])
+    cluster = int(kmeans.predict(user_scaled)[0])
 
     description = cluster_description.get(cluster, "Unknown cluster")
 
     # Distances from centroids
-    distances = dbscan_model.transform(user_scaled)[0]
+    distances = kmeans.transform(user_scaled)[0]
     dist_dict = {f"Cluster {i}": float(distances[i]) for i in range(len(distances))}
 
     # Display result
